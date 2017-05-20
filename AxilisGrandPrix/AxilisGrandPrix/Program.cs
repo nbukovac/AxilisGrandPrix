@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Data;
 using System.Net;
 using Newtonsoft.Json;
 
@@ -35,19 +37,31 @@ namespace AxilisGrandPrix
                 var board = gameStart.board;
                 gameToken = gameStart.gameToken;
 
-                int row1, row2, col1, col2 = 0;
-
                 while (true)
                 {
-                    SwapElements(board, out row1, out col1, out row2, out col2);
+                    var swap = SmarterSwapElements(board);
+
+                    if (swap == null)
+                    {
+                        for (int i = 0; i < BoardSize - 1; i++)
+                        {
+                            for (int j = 0; j < BoardSize - 1; j++)
+                            {
+                                Console.Write(board[i, j] + " ");
+                            }
+                            Console.WriteLine();
+                        }
+
+                        SmarterSwapElements(board);
+                    }
 
                     Console.WriteLine(JsonConvert.SerializeObject(new SwapSendModel
                     {
                         token = gameToken,
-                        row1 = row1,
-                        col1 = col1,
-                        row2 = row2,
-                        col2 = col2
+                        row1 = swap.Row1,
+                        col1 = swap.Column1,
+                        row2 = swap.Row2,
+                        col2 = swap.Column2
                     }));
 
 
@@ -58,10 +72,10 @@ namespace AxilisGrandPrix
                             JsonConvert.SerializeObject(new SwapSendModel
                             {
                                 token = gameToken,
-                                row1 = row1,
-                                col1 = col1,
-                                row2 = row2,
-                                col2 = col2
+                                row1 = swap.Row1,
+                                col1 = swap.Column1,
+                                row2 = swap.Row2,
+                                col2 = swap.Column2
                             }));
                     }
 
@@ -81,125 +95,351 @@ namespace AxilisGrandPrix
             }
         }
 
-        private static void SwapElements(int[,] board, out int row1, out int col1, out int row2, out int col2)
+        private static SwapElement SmarterSwapElements(int[,] board)
         {
-            row1 = col1 = 8;
-            row2 = 8;
-            col2 = 7;
+            var swaps = new List<SwapElement>();
 
-            for (var i = BoardSize - 1; i >= 0; i--)
+            for (int i = BoardSize - 1; i >= 0; i--)
             {
-                for (var j = BoardSize - 1; j >= 2; j--)
+                for (int j = BoardSize - 1; j >= 0; j--)
                 {
-                    if (board[i, j] == board[i, j - 1])
+                    var horizontalFront = CheckHorizontalFront(i, j, board);
+                    var horizontalBack = CheckHorizontalBack(i, j, board);
+                    var horizontalGap = CheckHorizontalGap(i, j, board);
+                    var horizontalMiddle = CheckHorizontalMiddle(i, j, board);
+
+                    var verticalBottom = CheckVerticalBottom(i, j, board);
+                    var verticalTop = CheckVerticalTop(i, j, board);
+                    var verticalGap = CheckVerticalGap(i, j, board);
+                    var verticalMiddle = CheckVerticalMiddle(i, j, board);
+
+                    if (horizontalBack != null)
                     {
-                        if ((i >= 1) && (board[i - 1, j - 2] == board[i, j]))
+                        Console.WriteLine("horizontalBack");
+                        return horizontalBack;
+                    }
+
+                    if (horizontalFront != null)
+                    {
+                        Console.WriteLine("horizontalFront");
+                        return horizontalFront;
+                    }
+
+                    if (horizontalGap != null)
+                    {
+                        Console.WriteLine("horizontalGap");
+                        return horizontalGap;
+                    }
+
+                    if (horizontalMiddle != null)
+                    {
+                        Console.WriteLine("horizontalMiddle");
+                        return horizontalMiddle;
+                    }
+
+                    if (verticalGap != null)
+                    {
+                        Console.WriteLine("verticalGap");
+                        return verticalGap;
+                    }
+
+                    if (verticalBottom != null)
+                    {
+                        Console.WriteLine("verticalBottom");
+                        return verticalBottom;
+                    }
+
+                    if (verticalTop != null)
+                    {
+                        Console.WriteLine("verticalTop");
+                        return verticalTop;
+                    }
+
+                    if (verticalMiddle != null)
+                    {
+                        Console.WriteLine("verticalMiddle");
+                        return verticalMiddle;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static SwapElement CheckHorizontalFront(int i, int j, int[,] board)
+        {
+            if (j <= BoardSize - 2)
+            {
+                if (board[i, j] == board[i, j + 1])
+                {
+                    if (i < BoardSize - 1 && j > 0)
+                    {
+                        if (board[i + 1, j - 1] == board[i, j])
                         {
-                            row1 = i;
-                            col1 = j - 2;
-                            row2 = i - 1;
-                            col2 = j - 2;
-                            return;
-                        }
-                        if ((i >= 1) && (j >= 3) && (board[i, j - 3] == board[i, j]))
-                        {
-                            row1 = i;
-                            col1 = j - 2;
-                            row2 = i;
-                            col2 = j - 3;
-                            return;
-                        }
-                        if ((i < BoardSize - 1) && (board[i + 1, j - 2] == board[i, j]))
-                        {
-                            row1 = i;
-                            col1 = j - 2;
-                            row2 = i + 1;
-                            col2 = j - 2;
-                            return;
-                        }
-                        if ((i < BoardSize - 1) && (j < BoardSize - 1) && (board[i + 1, j + 1] == board[i, j]))
-                        {
-                            row1 = i;
-                            col1 = j + 1;
-                            row2 = i + 1;
-                            col2 = j + 1;
-                            return;
+                            return new SwapElement()
+                            {
+                                Row1 = i,
+                                Column1 = j - 1,
+                                Row2 = i + 1,
+                                Column2 = j - 1
+                            };
                         }
                     }
 
-                    if (board[i, j] == board[i, j - 2])
+                    if (i > 0 && j > 0)
                     {
-                        if ((i >= 1) && (board[i - 1, j - 1] == board[i, j]))
+                        if (board[i - 1, j - 1] == board[i, j])
                         {
-                            row1 = i;
-                            col1 = j - 1;
-                            row2 = i - 1;
-                            col2 = j - 1;
-                            return;
-                        }
-                    }
-
-                    if (board[i, j - 1] == board[i, j - 2])
-                    {
-                        if ((i >= 1) && (board[i - 1, j] == board[i, j - 1]))
-                        {
-                            row1 = i;
-                            col1 = j;
-                            row2 = i - 1;
-                            col2 = j;
-                            return;
-                        }
-                    }
-
-                    if ((i > 1) && (board[i, j] == board[i - 1, j]))
-                    {
-                        if ((j < BoardSize - 1) && (board[i, j] == board[i - 2, j + 1]))
-                        {
-                            row1 = i - 2;
-                            col1 = j;
-                            row2 = i - 2;
-                            col2 = j + 1;
-                            return;
-                        }
-                        if (board[i, j] == board[i - 2, j - 1])
-                        {
-                            row1 = i - 2;
-                            col1 = j;
-                            row2 = i - 2;
-                            col2 = j - 1;
-                            return;
-                        }
-                        if ((i > 2) && (board[i, j] == board[i - 3, j]))
-                        {
-                            row1 = i - 2;
-                            col1 = j;
-                            row2 = i - 3;
-                            col2 = j;
-                            return;
-                        }
-                    }
-
-                    if ((i > 1) && (board[i, j] == board[i - 2, j]))
-                    {
-                        if (board[i, j] == board[i - 1, j - 1])
-                        {
-                            row1 = i - 1;
-                            col1 = j;
-                            row2 = i - 1;
-                            col2 = j - 1;
-                            return;
-                        }
-                        if ((j < BoardSize - 1) && (board[i, j] == board[i - 1, j + 1]))
-                        {
-                            row1 = i - 1;
-                            col1 = j;
-                            row2 = i - 1;
-                            col2 = j + 1;
-                            return;
+                            return new SwapElement()
+                            {
+                                Row1 = i,
+                                Column1 = j - 1,
+                                Row2 = i - 1,
+                                Column2 = j - 1
+                            };
                         }
                     }
                 }
             }
+
+            return null;
+        }
+
+        private static SwapElement CheckHorizontalMiddle(int i, int j, int[,] board)
+        {
+            if (j <= BoardSize - 3)
+            {
+                if (board[i, j] == board[i, j + 2])
+                {
+                    if (i < BoardSize - 1 && board[i, j] == board[i + 1, j + 1])
+                    {
+                        return new SwapElement()
+                        {
+                            Row1 = i,
+                            Column1 = j + 1,
+                            Row2 = i + 1,
+                            Column2 = j + 1
+                        };
+                    }
+
+                    if (i > 0 && board[i, j] == board[i - 1, j + 1])
+                    {
+                        return new SwapElement()
+                        {
+                            Row1 = i,
+                            Column1 = j + 1,
+                            Row2 = i - 1,
+                            Column2 = j + 1
+                        };
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static SwapElement CheckHorizontalBack(int i, int j, int[,] board)
+        {
+            if (j <= BoardSize - 3)
+            {
+                if (board[i, j] == board[i, j + 1])
+                {
+                    if (i < BoardSize - 1)
+                    {
+                        if (board[i + 1, j + 2] == board[i, j])
+                        {
+                            return new SwapElement()
+                            {
+                                Row1 = i,
+                                Column1 = j + 2,
+                                Row2 = i + 1,
+                                Column2 = j + 2
+                            };
+                        }
+                    }
+
+                    if (i > 0)
+                    {
+                        if (board[i - 1, j + 2] == board[i, j])
+                        {
+                            return new SwapElement()
+                            {
+                                Row1 = i,
+                                Column1 = j + 2,
+                                Row2 = i - 1,
+                                Column2 = j + 2
+                            };
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static SwapElement CheckHorizontalGap(int i, int j, int[,] board)
+        {
+            if (j <= BoardSize - 4)
+            {
+                if (board[i, j] == board[i, j + 1] && board[i, j] == board[i, j + 3])
+                {
+                    return new SwapElement()
+                    {
+                        Row1 = i,
+                        Column1 = j + 2,
+                        Row2 = i,
+                        Column2 = j + 3
+                    };
+                }
+            }
+
+            if (j >= 2 && j <= BoardSize - 2)
+            {
+                if (board[i, j] == board[i, j + 1] && board[i, j] == board[i, j - 2])
+                {
+                    return new SwapElement()
+                    {
+                        Row1 = i,
+                        Column1 = j - 1,
+                        Row2 = i,
+                        Column2 = j - 2
+                    };
+                }
+            }
+
+            return null;
+        }
+
+        private static SwapElement CheckVerticalBottom(int i, int j, int[,] board)
+        {
+            if (i <= BoardSize - 3)
+            {
+                if (board[i, j] == board[i + 1, j])
+                {
+                    if (j >= 1 && board[i, j] == board[i + 2, j - 1])
+                    {
+                        return new SwapElement()
+                        {
+                            Row1 = i + 2,
+                            Column1 = j,
+                            Row2 = i + 2,
+                            Column2 = j - 1
+                        };
+                    }
+
+                    if (j < BoardSize - 1 && board[i, j] == board[i + 2, j + 1])
+                    {
+                        return new SwapElement()
+                        {
+                            Row1 = i + 2,
+                            Column1 = j,
+                            Row2 = i + 2,
+                            Column2 = j + 1
+                        };
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static SwapElement CheckVerticalMiddle(int i, int j, int[,] board)
+        {
+            if (i <= BoardSize - 3)
+            {
+                if (board[i, j] == board[i + 2, j])
+                {
+                    if (j < BoardSize - 1 && board[i, j] == board[i + 1, j + 1])
+                    {
+                        return new SwapElement()
+                        {
+                            Row1 = i + 1,
+                            Column1 = j,
+                            Row2 = i + 1,
+                            Column2 = j + 1
+                        };
+                    }
+
+                    if (j > 0 && board[i, j] == board[i + 1, j - 1])
+                    {
+                        return new SwapElement()
+                        {
+                            Row1 = i + 1,
+                            Column1 = j,
+                            Row2 = i + 1,
+                            Column2 = j - 1
+                        };
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static SwapElement CheckVerticalTop(int i, int j, int[,] board)
+        {
+            if (i >= 2)
+            {
+                if (board[i, j] == board[i - 1, j])
+                {
+                    if (j > 0 && board[i, j] == board[i - 2, j - 1])
+                    {
+                        return new SwapElement()
+                        {
+                            Row1 = i - 2,
+                            Column1 = j,
+                            Row2 = i - 2,
+                            Column2 = j - 1
+                        };
+                    }
+
+                    if (j <= BoardSize - 2 && board[i, j] == board[i - 2, j + 1])
+                    {
+                        return new SwapElement()
+                        {
+                            Row1 = i - 2,
+                            Column1 = j,
+                            Row2 = i - 2,
+                            Column2 = j + 1
+                        };
+                    }
+                }   
+            }
+
+            return null;
+        }
+
+        private static SwapElement CheckVerticalGap(int i, int j, int[,] board)
+        {
+            if (i > 2)
+            {
+                if (board[i, j] == board[i - 1, j] && board[i, j] == board[i - 3, j])
+                {
+                    return new SwapElement()
+                    {
+                        Row1 = i - 2,
+                        Column1 = j,
+                        Row2 = i - 3,
+                        Column2 = j
+                    };
+                }
+            }
+
+            if (i <= BoardSize - 4)
+            {
+                if (board[i, j] == board[i + 1, j] && board[i, j] == board[i + 3, j])
+                {
+                    return new SwapElement()
+                    {
+                        Row1 = i + 2,
+                        Column1 = j,
+                        Row2 = i + 3,
+                        Column2 = j
+                    };
+                }
+            }
+
+            return null;
         }
     }
 }

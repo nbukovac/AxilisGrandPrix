@@ -51,6 +51,7 @@
     <Compile Include="GameStartSendModel.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SwapElement.cs" />
     <Compile Include="SwapReceiveModel.cs" />
     <Compile Include="SwapSendModel.cs" />
   </ItemGroup>
